@@ -411,100 +411,74 @@ end
 """
 ```
 forecast_one(m, input_type, cond_type, output_vars; df = DataFrame(),
-    subset_inds = 1:0, forecast_string = "", verbose = :low, ...)
+    subset_inds = 1:0, forecast_string = "", verbose = :low, ...) -> nothing
 ```
 
-Compute and save `output_vars` for input draws given by `input_type` and
-conditional data case given by `cond_type`.
+Compute and save forecast outputs for a DSGE model.
 
-### Inputs
+This is the main forecasting driver. For each parameter draw (or a single draw at the mode/mean),
+it solves the model, runs the Kalman smoother/filter on historical data, produces forward
+projections, and computes additional outputs like shock decompositions and impulse responses.
+Results are saved to HDF5 files.
 
-- `m::AbstractDSGEModel`: model object
+### Arguments
 
-- `input_type::Symbol`: one of:
-
-```
-  - `:mode`: forecast using the modal parameters only
-  - `:mean`: forecast using the mean parameters only
-  - `:init`: forecast using the initial parameter values only
-  - `:full`: forecast using all parameters (full distribution)
-  - `:subset`: forecast using a well-defined user-specified subset of draws
-```
-
-- `cond_type::Symbol`: one of:
-
-```
-  - `:none`: no conditional data
-  - `:semi`: use \"semiconditional data\" - average of quarter-to-date
-    observations for high frequency series
-  - `:full`: use \"conditional data\" - semiconditional plus nowcasts for
-    desired observables
-```
-
-- `output_vars::Vector{Symbol}`: vector of desired output variables. See
-  `?forecast_one_draw`.
+- `m::AbstractDSGEModel{Float64}`: model object with estimation and forecast settings configured.
+- `input_type::Symbol`: which parameter draws to use:
+  - `:mode` — forecast at the posterior mode (point forecast).
+  - `:mean` — forecast at the posterior mean.
+  - `:init` — forecast at the initial parameter values.
+  - `:full` — forecast over the full posterior distribution.
+  - `:subset` — forecast using a user-specified subset of draws.
+- `cond_type::Symbol`: conditioning on observed data:
+  - `:none` — no conditional data (unconditional forecast).
+  - `:semi` — semiconditional (quarter-to-date averages for high-frequency series).
+  - `:full` — full conditional data (semiconditional plus nowcasts).
+- `output_vars::Vector{Symbol}`: desired outputs, e.g.:
+  - `:histobs` — smoothed historical observables.
+  - `:forecastobs` — forecasted observables.
+  - `:shockdecobs` — shock decomposition of observables.
+  - `:irfobs` — impulse response functions for observables.
+  See `?forecast_one_draw` for the complete list.
 
 ### Keyword Arguments
 
-- `df::DataFrame`: Historical data. If `cond_type in [:semi, :full]`, then the
-   final row of `df` should be the period containing conditional data. If not
-   provided, will be loaded using `load_data` with the appropriate `cond_type`
-- `subset_inds::AbstractRange{Int64}`: indices specifying the draws we want to use. If a
-  more sophisticated selection criterion is desired, the user is responsible for
-  determining the indices corresponding to that criterion. If `input_type` is
-  not `subset`, `subset_inds` will be ignored
-- `forecast_string::String`: short string identifying the subset to be
-  appended to the output filenames. If `input_type = :subset` and
-  `forecast_string` is empty, an error is thrown.
-- `only_filter::Bool`: do not run the smoother and only run the filter. This limits the number of
-  output variables which can be calculated.
-- `verbose::Symbol`: desired frequency of function progress messages printed to
-  standard out. One of `:none`, `:low`, or `:high`.
-- `check_empty_columns::Bool = true`: check empty columns or not when loading data (if `df` is empty)
-- `bdd_fcast::Bool = true`: are we computing the bounded forecasts or not?
-- `params::AbstractArray{Float64} = Vector{Float64}(undef, 0)`: parameter draws for the forecast.
-     If empty, then we load draws from estimation files implied by the settings in `m`.
-- `zlb_method::Symbol`: method for enforcing the zero lower bound. Defaults to `:shock`,
-    meaning we use a monetary policy shock to enforce the ZLB.
+- `df::DataFrame = DataFrame()`: historical data. If empty, loaded via `load_data`.
+- `subset_inds::AbstractRange{Int64} = 1:0`: draw indices for `input_type = :subset`.
+- `forecast_string::String = ""`: identifier appended to output filenames.
+- `only_filter::Bool = false`: skip the smoother and only run the Kalman filter.
+- `verbose::Symbol = :low`: progress message frequency (`:none`, `:low`, `:high`).
+- `check_empty_columns::Bool = true`: check for empty data columns when loading.
+- `bdd_fcast::Bool = true`: compute bounded forecasts.
+- `params::AbstractArray{Float64} = []`: override parameter draws (bypasses loading from files).
+- `zlb_method::Symbol = :shock`: method for enforcing the zero lower bound
+  (`:shock` or `:temporary_altpolicy`).
+- `rerun_smoother::Bool = false`: rerun the smoother when enforcing ZLB as temporary policy.
+- `nan_endozlb_failures::Bool = false`: return NaNs instead of errors on ZLB enforcement failure.
+- `set_regime_vals_altpolicy::Function = identity`: adds regime-switching parameter values for temporary policies.
+- `set_info_sets_altpolicy::Function = auto_temp_altpolicy_info_set`: updates time-varying information sets.
+- `update_regime_eqcond_info!::Function`: updates `:regime_eqcond_info` for temporary ZLB implementation.
+- `show_failed_percent::Bool = false`: print the percentage of failed forecast draws.
+- `pegFFR::Bool = false`: peg the federal funds rate at `FFRpeg`.
+- `FFRpeg::Float64 = -0.25/4`: value of the FFR peg.
+- `H::Int = 4`: number of horizons for the FFR peg.
 
-  Other available methods:
-  1. `:temporary_altpolicy` -> use a temporary alternative policy to enforce the ZLB.
+### Returns
 
-- `rerun_smoother::Bool = false`: if true, rerun the conditional forecast when automatically enforcing
-    the ZLB as a temporary alternative policy.
-- `nan_endozlb_failures::Bool = false`: if true, failures of an endogenous ZLB (when implemented
-    as a temporary policy) will be handled by throwing NaNs instead of using
-    unanticipated monetary policy shocks.
-- `set_regime_vals_altpolicy::Function`: `Function` that adds new regimes to parameters when
-    using temporary alternative policies (if needed). Defaults to identity (which does nothing)
-    This function should take as inputs the model object `m` and the total number of regimes
-    (after adding the required temporary regimes), i.e. `set_regime_vals_altpolicy(m, n)`. It should then
-    set up regime-switching parameters for these new additional regimes.
-- `set_info_sets_altpolicy::Function = auto_temp_altpolicy_info_set`: `Function` that automatically updates
-    the `tvis_information_set`, e.g. when `zlb_method = :temporary_altpolicy`.
-- `update_regime_eqcond_info!::Function = (x1, x2, x3, x4) ->
-    default_update_regime_eqcond_info(x1, x2, x3, x4, alternative_policy(m)`: `Function` that automatically
-    updates the setting `:regime_eqcond_info`. The arguments of `update_regime_eqcond_info!` should be (in order)
-    `m::AbstractDSGEModel`, `eqcond_dict::AbstractDict{Int64, EqcondEntry}`, `zlb_start_regime::Int64`,
-    and `liftoff_regime::Int64`. The last two arguments are the regime numbers of the first regime for which
-    the ZLB applies and the regime after the ZLB ends, respectively.
-    The `eqcond_dict` argument should specify the `EqcondEntry` during the historical/conditional horizon regime
-    (if it is desired) but can otherwise be empty. This function should then update `eqcond_dict`
-    in place to implement a temporary ZLB and any other permanent alternative policies/regime-switching
-    in the forecast horizon (after the conditional horizon).
-    The user should also be careful and make sure `update_regime_eqcond_info!` handles imperfect awareness properly
-    if they want to implement an imperfectly credible ZLB. For an example, see `?default_update_regime_eqcond_info`.
-- `show_failed_percent::Bool = false`: prints out the number of failed forecasts, which are returned as NaNs.
-    These may occur when the ZLB is not enforced, for example.
-- `pegFFR::Bool = false`: peg the nominal FFR at the value specified by `FFRpeg`
-- `FFRpeg::Float64 = -0.25/4`: value of the FFR peg
-- `H::Int = 4`: number of horizons for which the FFR is pegged
-- `testing_carer_kohn::Bool = false`: whether to create a file storing some property of Σ in Carter Kohn
-
-### Outputs
-
-None. Output is saved to files returned by
+`nothing`. Output is saved to HDF5 files returned by
 `get_forecast_output_files(m, input_type, cond_type, output_vars)`.
+
+### Example
+
+```julia
+using DSGE
+m = Model1002("ss10")
+m <= Setting(:data_vintage, "241030")
+m <= Setting(:date_forecast_start, quartertodate("2024-Q4"))
+
+output_vars = [:histobs, :forecastobs]
+forecast_one(m, :mode, :none, output_vars; check_empty_columns=false)
+```
 """
 function forecast_one(m::AbstractDSGEModel{Float64},
                       input_type::Symbol, cond_type::Symbol, output_vars::Vector{Symbol};
