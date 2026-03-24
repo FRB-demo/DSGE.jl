@@ -85,21 +85,30 @@ Warnings are issued for:
 """
 function validate_data(m::AbstractDSGEModel, data::DataFrame)
     n_obs = n_observables(m)
-    # The data DataFrame typically has a :date column plus observable columns
-    data_cols = setdiff(propertynames(data), [:date])
-    n_data_cols = length(data_cols)
+    # Only check columns that correspond to model observables
+    obs_keys = collect(keys(m.observables))
+    data_col_names = propertynames(data)
 
-    if n_data_cols < n_obs
+    # Check that all required observable columns are present
+    missing_obs = Symbol[]
+    for obs in obs_keys
+        if !(obs in data_col_names)
+            push!(missing_obs, obs)
+        end
+    end
+
+    if !isempty(missing_obs)
         throw(DSGEDataError(
-            "Data has $(n_data_cols) observable column(s) but the model expects $(n_obs). " *
-            "Ensure the data contains all required observables."
+            "Data is missing $(length(missing_obs)) required observable column(s): " *
+            join(string.(missing_obs), ", ") * ". " *
+            "The model expects $(n_obs) observable(s). Ensure the data contains all required observables."
         ))
     end
 
-    # Check for entirely NaN/missing columns
+    # Check observable columns for entirely NaN/missing values
     all_nan_cols = String[]
     partial_nan_cols = String[]
-    for col in data_cols
+    for col in obs_keys
         col_data = data[!, col]
         n_total = length(col_data)
         n_missing = count(ismissing, col_data)

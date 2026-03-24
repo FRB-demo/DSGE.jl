@@ -91,19 +91,22 @@ using DSGE, ModelConstructors, Test, DataFrames, Dates
         # Valid data should pass
         @test validate_data(m, df) === nothing
 
-        # Test mismatched data dimensions (too few columns)
+        # Test missing observable columns
         df_few = DataFrame(:date => dates)
         df_few[!, :obs_only_one] = randn(n_periods)
-        if n_obs > 1
-            @test_throws DSGEDataError validate_data(m, df_few)
-            try
-                validate_data(m, df_few)
-            catch ex
-                @test isa(ex, DSGEDataError)
-                @test occursin("observable column(s)", ex.msg)
-                @test occursin("model expects", ex.msg)
-            end
+        @test_throws DSGEDataError validate_data(m, df_few)
+        try
+            validate_data(m, df_few)
+        catch ex
+            @test isa(ex, DSGEDataError)
+            @test occursin("missing", ex.msg)
+            @test occursin("required observable column(s)", ex.msg)
         end
+
+        # Test that extra non-observable columns don't cause errors
+        df_extra = copy(df)
+        df_extra[!, :extra_column] = randn(n_periods)
+        @test validate_data(m, df_extra) === nothing
 
         # Test entirely NaN column
         df_nan = copy(df)
