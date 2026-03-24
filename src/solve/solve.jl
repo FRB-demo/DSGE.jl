@@ -26,6 +26,9 @@ function solve(m::AbstractDSGEModel{T}; regime_switching::Bool = false,
                regimes::Vector{Int} = Int[1],
                verbose::Symbol = :high) where {T <: Real}
 
+    # Validate parameters before solving
+    validate_parameters(m)
+
     uncertain_altpolicy = haskey(get_settings(m), :uncertain_altpolicy) && get_setting(m, :uncertain_altpolicy)
     if regime_switching
         return solve_regime_switching(m; gensys_regimes = gensys_regimes,

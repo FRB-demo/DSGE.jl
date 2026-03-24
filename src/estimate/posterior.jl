@@ -168,7 +168,7 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
     system = try
         compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set), verbose = verbose)
     catch err
-        if catch_errors && (isa(err, GensysError) || isa(err, KleinError))
+        if catch_errors && (isa(err, GensysError) || isa(err, KleinError) || isa(err, DSGEParameterError))
             return -Inf
         else
             rethrow(err)

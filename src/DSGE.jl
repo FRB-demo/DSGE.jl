@@ -91,6 +91,10 @@ module DSGE
         subtract_quarters, iterate_quarters,
         simulate_data, simulate_observables, simulate_states, post_covid_data_mods!,
 
+        # validation.jl
+        validate_parameters, validate_data, validate_estimation_settings,
+        DSGEParameterError, DSGEDataError, DSGEEstimationError,
+
         # solve/
         gensys, solve, klein,
 
@@ -192,6 +196,7 @@ module DSGE
     const DSGE_SHOCKDEC_DELIM = "__"
 
     include("abstractdsgemodel.jl")
+    include("validation.jl")
     include("abstractvarmodel.jl")
     include("defaults.jl")
     include("models/poolmodel/poolmodel.jl")
