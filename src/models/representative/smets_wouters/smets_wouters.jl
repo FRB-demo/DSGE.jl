@@ -168,6 +168,47 @@ function init_model_indices!(m::SmetsWouters)
 end
 
 
+"""
+```
+SmetsWouters(subspec="ss0"; custom_settings=Setting[], testing=false) -> SmetsWouters{Float64}
+```
+
+Construct a Smets-Wouters (2007) DSGE model.
+
+This is a medium-scale New Keynesian model with sticky prices and wages, capital accumulation,
+variable capital utilization, investment adjustment costs, and habit formation. It features
+7 structural shocks: technology (`z_sh`), government spending (`g_sh`), risk premium (`b_sh`),
+investment-specific technology (`μ_sh`), price markup (`λ_f_sh`), wage markup (`λ_w_sh`),
+and monetary policy (`rm_sh`).
+
+### Arguments
+
+- `subspec::String = "ss0"`: sub-specification identifier. Different subspecs override
+  default parameter values (e.g., fixed vs. estimated parameters).
+
+### Keyword Arguments
+
+- `custom_settings::Vector{Setting} = []`: additional settings applied after defaults.
+  Use this to override date, vintage, or computation settings at construction time.
+- `testing::Bool = false`: if `true`, the model uses `test_settings` instead of `settings`,
+  which typically point to smaller test datasets and shorter estimation runs.
+
+### Returns
+
+- `SmetsWouters{Float64}`: fully initialized model object with parameters, steady-state
+  values, model indices, observable mappings, and default settings.
+
+### Example
+
+```julia
+using DSGE
+m = SmetsWouters()
+TTT, RRR, CCC = solve(m)
+
+# With custom settings
+m = SmetsWouters("ss0"; custom_settings=[Setting(:data_vintage, "241030")])
+```
+"""
 function SmetsWouters(subspec::String="ss0";
                       custom_settings::Array{S} where S<:Setting = Array{Setting{Bool}}(undef, 0),
                       testing = false)

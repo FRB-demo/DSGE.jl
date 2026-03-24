@@ -1,23 +1,56 @@
 """
 ```
-solve(m::AbstractDSGEModel)
+solve(m::AbstractDSGEModel{T}) -> (TTT, RRR, CCC)
 ```
 
-Driver to compute the model solution and augment transition matrices.
+Solve the DSGE model by computing the state-space transition matrices from the model's
+equilibrium conditions. Uses the `gensys` algorithm (Chris Sims) by default, or the
+Klein method if specified via the `:solution_method` setting.
 
-### Inputs
+The solution expresses the model in state-space form:
 
-- `m`: the model object
-
-## Keyword Arguments
-
-- `regime_switching::Bool`: true if the state space system features regime switching
-- `regimes::Union{Int, Vector{Int}, UnitRange{Int}}`: specifies the specific regime to solve for.
-
-### Outputs
- - TTT, RRR, and CCC matrices of the state transition equation:
 ```
-S_t = TTT*S_{t-1} + RRR*ϵ_t + CCC
+S_t = TTT * S_{t-1} + RRR * ϵ_t + CCC
+```
+
+where `S_t` is the vector of states, `ϵ_t` is the vector of exogenous shocks,
+`TTT` is the transition matrix, `RRR` is the shock-loading matrix, and `CCC` is
+the constant vector.
+
+### Arguments
+
+- `m::AbstractDSGEModel{T}`: model object (e.g., `AnSchorfheide()`, `SmetsWouters()`)
+
+### Keyword Arguments
+
+- `regime_switching::Bool = false`: set to `true` if the state-space system features
+  regime switching. When `true`, returns vectors of matrices (one per regime).
+- `gensys_regimes::Vector{UnitRange{Int64}}`: regime ranges solved independently by `gensys`.
+- `gensys2_regimes::Vector{UnitRange{Int64}}`: regime ranges solved by `gensys2`
+  (for temporary policy changes with anticipated structural breaks).
+- `regimes::Vector{Int}`: which regimes to solve for.
+- `verbose::Symbol = :high`: verbosity level (`:none`, `:low`, or `:high`).
+
+### Returns
+
+- `TTT::Matrix{Float64}`: transition matrix of size `n_states x n_states`.
+- `RRR::Matrix{Float64}`: shock-loading matrix of size `n_states x n_shocks`.
+- `CCC::Vector{Float64}`: constant vector of length `n_states`.
+
+When `regime_switching = true` and multiple regimes are requested, returns
+`(TTTs::Vector{Matrix}, RRRs::Vector{Matrix}, CCCs::Vector{Vector})`.
+
+### Throws
+
+- `GensysError`: if the `gensys` algorithm fails to find a unique stable solution
+  (no existence or no uniqueness).
+
+### Example
+
+```julia
+using DSGE
+m = AnSchorfheide()
+TTT, RRR, CCC = solve(m)
 ```
 """
 function solve(m::AbstractDSGEModel{T}; regime_switching::Bool = false,

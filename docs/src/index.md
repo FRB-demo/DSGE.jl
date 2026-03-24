@@ -21,6 +21,8 @@ in the future at the discretion of the New York Fed.
 
 ```@contents
 Pages = [
+  "quickstart.md",
+  "architecture.md",
   "learning_how_to_use_dsgejl.md",
   "model_design.md",
   "special_model_types.md",

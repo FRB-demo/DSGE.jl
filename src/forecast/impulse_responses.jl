@@ -1,30 +1,54 @@
 """
 ```
-impulse_responses(m, system)
+impulse_responses(m, system) -> (states, obs, pseudo)
 
-impulse_responses(system, horizon)
+impulse_responses(system, horizon) -> (states, obs, pseudo)
 ```
 
-Compute impulse responses for a single draw.
+Compute impulse response functions (IRFs) for each structural shock in the model.
 
-### Inputs
+An IRF traces the dynamic response of model variables to a one-standard-deviation
+shock to each structural disturbance, holding all other shocks at zero. By default,
+the shock is negative (contractionary for a monetary policy shock); set `flip_shocks=true`
+for positive (expansionary) shocks.
 
-- `m::AbstractDSGEModel`: model object
-- `system::System{S}`: state-space system matrices
-- `horizon::Int`: number of periods ahead to forecast
-- `flip_shocks::Bool`: Whether to compute IRFs in response to a positive shock (by default the shock magnitude is a negative 1 std. shock)
-- `use_changing_systems::Bool`: Whether to use changing transition matrices for future quarters. If false, just uses the system from the impulse_response_regime for all quarters.
+Multiple dispatch provides several methods:
+- `impulse_responses(m, system)`: uses the model's `:impulse_response_horizons` setting.
+- `impulse_responses(system, horizon)`: directly specify the horizon (no model object needed).
+- `impulse_responses(m, system, horizon, shock_names, shock_values)`: specify a subset of shocks with custom magnitudes.
+- `impulse_responses(m, system, horizon, shock_name, var_name, var_value)`: back out the shock size needed to move a specific variable by `var_value`.
 
-where `S<:AbstractFloat`
+### Arguments
 
-### Outputs
+- `m::AbstractDSGEModel`: model object (determines horizon and shock indices).
+- `system::System{S}` or `RegimeSwitchingSystem{S}`: state-space system matrices from `compute_system(m)`.
+- `horizon::Int`: number of periods ahead to compute (when not using the model's setting).
 
-- `states::Array{S, 3}`: matrix of size `nstates` x `horizon` x `nshocks` of
-  state impulse response functions
-- `obs::Array{S, 3}`: matrix of size `nobs` x `horizon` x `nshocks` of
-  observable impulse response functions
-- `pseudo::Array{S, 3}`: matrix of size `npseudo` x `horizon` x `nshocks` of
-  pseudo-observable impulse response functions
+### Keyword Arguments
+
+- `flip_shocks::Bool = false`: if `true`, compute IRFs to a positive 1-standard-deviation shock
+  (default is negative).
+- `use_changing_systems::Bool = true`: for `RegimeSwitchingSystem`, whether to use
+  time-varying transition matrices. If `false`, uses the system from a single regime for all quarters.
+
+### Returns
+
+- `states::Array{S, 3}`: IRFs for state variables, size `n_states x horizon x n_shocks`.
+- `obs::Array{S, 3}`: IRFs for observables, size `n_obs x horizon x n_shocks`.
+- `pseudo::Array{S, 3}`: IRFs for pseudo-observables, size `n_pseudo x horizon x n_shocks`.
+
+### Example
+
+```julia
+using DSGE
+m = AnSchorfheide()
+system = compute_system(m)
+states, obs, pseudo = impulse_responses(m, system)
+
+# IRF of observables to the monetary policy shock
+shock_idx = m.exogenous_shocks[:rm_sh]
+println(obs[:, 1:8, shock_idx])
+```
 """
 @inline function impulse_responses(m::AbstractRepModel,
                            system::RegimeSwitchingSystem{S};
