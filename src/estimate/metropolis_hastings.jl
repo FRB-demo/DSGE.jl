@@ -198,8 +198,7 @@ function metropolis_hastings(proposal_dist::Distribution,
                 para_draw         = mvnormal_mixture_draw(para_subset, d_subset;
                                                           α = α, c = cc)
                 para_new          = deepcopy(para_old)
-                "para_new[block_a] = para_draw" #Get rid of this
-                para_new[block_a] = para_draw #New
+                para_new[block_a] = para_draw
 
                 q0, q1 = if adaptive_accept
                     # NOT DONE YET, we're not actually computing draws from the mixture yet b/c not using mvnormal_mixture_draw
