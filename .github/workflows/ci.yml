@@ -24,11 +24,11 @@ jobs:
           version: ${{ matrix.version }}
       - name: "Install unregistered NY Fed dependency versions from source"
         run: |
-          julia -e '
+          julia --project=@. -e '
             using Pkg
-            Pkg.add(url="https://github.com/FRBNY-DSGE/ModelConstructors.jl.git")
-            Pkg.add(url="https://github.com/FRBNY-DSGE/SMC.jl.git")
-            Pkg.add(url="https://github.com/FRBNY-DSGE/StateSpaceRoutines.jl.git")
+            Pkg.develop(url="https://github.com/FRBNY-DSGE/ModelConstructors.jl.git")
+            Pkg.develop(url="https://github.com/FRBNY-DSGE/SMC.jl.git")
+            Pkg.develop(url="https://github.com/FRBNY-DSGE/StateSpaceRoutines.jl.git")
           '
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
