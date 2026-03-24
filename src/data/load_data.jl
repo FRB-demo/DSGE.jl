@@ -160,6 +160,9 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
         df = func(m, df)
     end
 
+    # Validate loaded data against model expectations
+    validate_data(m, df)
+
     return df
 end
 

@@ -152,6 +152,11 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
                   toggle::Bool = true, log_prob_old_data::Float64 = 0.0,
                   add_zlb_duration::Tuple{Bool, Int} = (false, 1))
 
+    # Validate estimation settings before starting
+    if isa(m, AbstractDSGEModel)
+        validate_estimation_settings(m)
+    end
+
     if !(get_setting(m, :sampling_method) in [:SMC, :MH])
         error("method must be :SMC or :MH")
     else
