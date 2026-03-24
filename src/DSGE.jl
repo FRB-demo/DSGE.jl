@@ -1,5 +1,3 @@
-isdefined(Base, :__precompile__) && __precompile__(false)
-
 module DSGE
     using ModelConstructors, SMC
     using Dates, Test, BenchmarkTools
@@ -234,7 +232,6 @@ module DSGE
 
     include("solve/gensys.jl")
     include("solve/gensys2.jl")
-    include("solve/gensys_uncertain_altpol.jl") # Included after altpolicy code b/c this file uses the AltPolicy type
     include("solve/gensys2_uncertain_altpol.jl")
     include("solve/solve.jl")
     include("solve/klein.jl")
@@ -528,7 +525,4 @@ module DSGE
     # include("dsgevar/impulse_responses.jl")
     # include("dsgevar/util.jl")
 
-    if (VERSION >= v"1.0") && (VERSION <= v"1.1")
-        isnothing(x::Any) = x === nothing ? true : false
-    end
 end
